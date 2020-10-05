@@ -9,6 +9,7 @@ using Ipopt
 
 include("parameters.jl")
 
+
 function Collocation_Matrix()
       #Radau
       t1 = 0.155051
