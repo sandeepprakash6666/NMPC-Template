@@ -93,9 +93,9 @@ function Solve_OCP(x0, u₋₁, y_sp)
                   @variable(model1, u[1:Nu, 1:NFE])
 
                   #unscaled variables
-                  @variable(model1, q[    1,       1:NFE, 1:NCP])
+                  @variable(model1, q[    1:1,       1:NFE, 1:NCP])
                   @variable(model1, dx_us[1:Nx,    1:NFE, 1:NCP])
-                  @variable(model1, dq[   1,       1:NFE, 1:NCP])
+                  @variable(model1, dq[   1:1,       1:NFE, 1:NCP])
                   @variable(model1, alg[  1:Nz,    1:NFE, 1:NCP])
 
 
