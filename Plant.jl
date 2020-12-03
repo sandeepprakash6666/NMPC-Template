@@ -26,7 +26,7 @@ function Plant_Eqns(x,z,u)
 			alg = 0*copy(z)
 		#endregion
 
-		#region-> #*renaming variables to write equations more naturally
+		#region->renaming variables to write equations more naturally
 			x1 = x[1]
 			x2 = x[2]
 			μ  = z[1]
@@ -48,7 +48,7 @@ function Plant_Eqns(x,z,u)
 end
 
 
-#region-> #generic function to Integrate a DAE using SunDials integrator
+#region->#generic function to Integrate a DAE using SunDials integrator
 function Integrate_Plant_DAE(x0, q0, z0, u0, tspan)
         
 		#region-> For Debugging (Arguments that are passed
