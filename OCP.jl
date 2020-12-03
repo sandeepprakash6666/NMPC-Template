@@ -9,37 +9,35 @@ using Ipopt
 
 include("parameters.jl")
 include("Collocation_Matrix.jl")
-Pdotₘₐₜ, Pₘₐₜ = collocation_matrix(4, "Radau")
 
-Pdotₘₐₜ
-Pₘₐₜ
+#region->Old Collocation matrix code
+# function Collocation_Matrix()
+#       #Radau
+#       t1 = 0.155051
+#       t2 = 0.644949
+#       t3 = 1.0
 
-function Collocation_Matrix()
-      #Radau
-      t1 = 0.155051
-      t2 = 0.644949
-      t3 = 1.0
+#       M1 = [
+#             t1 1 / 2 * t1^2 1 / 3 * t1^3
+#             t2 1 / 2 * t2^2 1 / 3 * t2^3
+#             t3 1 / 2 * t3^2 1 / 3 * t3^3
+#             ]
+#       M2 = [
+#             1 t1 t1^2
+#             1 t2 t2^2
+#             1 t3 t3^2
+#             ]
 
-      M1 = [
-            t1 1 / 2 * t1^2 1 / 3 * t1^3
-            t2 1 / 2 * t2^2 1 / 3 * t2^3
-            t3 1 / 2 * t3^2 1 / 3 * t3^3
-            ]
-      M2 = [
-            1 t1 t1^2
-            1 t2 t2^2
-            1 t3 t3^2
-            ]
-
-      M = M1 * inv(M2)
-      return M
-end
+#       M = M1 * inv(M2)
+#       return M
+# end
+#endregion
 
 ##*
 # function Solve_OCP(x0, u₋₁, y_sp)
 
       #region -> Value of Arguments for Debugging
-            x0 = [1.0; 1.0]
+            x0  = [1.0; 1.0]
             u₋₁ = 0.3
             y_sp = append!(1.5302*ones(15), 0.9951*ones(15) )
             Sim_par = Dict()
@@ -85,7 +83,7 @@ Display_Plots = true
             q0   = 0
             dq0  = 0
             dx0  = 0*copy(x_guess)
-            alg0 = 0*copy(z_guess) 
+            # alg0 = 0*copy(z_guess) 
             #endregion
 
 ##* Defining Solver
@@ -98,10 +96,10 @@ model1 = Model(with_optimizer(Ipopt.Optimizer))
             @variable(model1, u[1:Nu, 1:NFE])
 
             #unscaled variables
-            @variable(model1, q[    1:1,       1:NFE, 1:NCP])
-            @variable(model1, dx_us[1:Nx,    1:NFE, 1:NCP])
-            @variable(model1, dq[   1:1,       1:NFE, 1:NCP])
-            @variable(model1, alg[  1:Nz,    1:NFE, 1:NCP])
+            @variable(model1, q[    1:1,        1:NFE, 1:NCP])
+            @variable(model1, dx_us[1:Nx,       1:NFE, 1:NCP])
+            @variable(model1, dq[   1:1,        1:NFE, 1:NCP])
+            # @variable(model1, alg[  1:Nz,       1:NFE, 1:NCP])
 
 
             #region -> Set Variable Bounds AND Initial Guesses 
@@ -127,7 +125,7 @@ model1 = Model(with_optimizer(Ipopt.Optimizer))
                   set_start_value(x[nx, nfe, ncp],    x_guess[nx])
                   set_start_value(z[nz, nfe, ncp],    z_guess[nz])
                   set_start_value(dx_us[nx, nfe, ncp],dx0[nx])
-                  set_start_value(alg[nz, nfe, ncp],  alg0[nz])
+                  # set_start_value(alg[nz, nfe, ncp],  alg0[nz])
                   set_start_value(u[nu, nfe],         u_guess[nu])
                   set_start_value(q[1, nfe, ncp],     q0)
                   set_start_value(dq[1, nfe, ncp],    dq0)
@@ -155,6 +153,12 @@ model1 = Model(with_optimizer(Ipopt.Optimizer))
       #region-> #*Define Constraints
 
       @NLconstraints(model1, begin
+            #Fixing Initial Point (After scaling differential states)
+            Constr_x0[nx in 1:Nx],  x[nx,1,1] == (x0[nx] -ls_x[nx])/(us_x[nx] - ls_x[nx])
+            Constr_q0,              q[1,1,1]  == q0
+      end)
+
+      @NLconstraints(model1, begin
             #Defining the model ODEs in each line
             Constr_ODE1[nfe in 1:NFE, ncp in 1:NCP], dx_us[1, nfe, ncp]      == x1[nfe, ncp] * (μ[nfe, ncp] - D[nfe])
             Constr_ODE2[nfe in 1:NFE, ncp in 1:NCP], dx_us[2, nfe, ncp]      == D[nfe]       * (x2_f - x2[nfe, ncp])           - μ[nfe, ncp] * x1[nfe, ncp] / Y
@@ -165,7 +169,7 @@ model1 = Model(with_optimizer(Ipopt.Optimizer))
       @NLconstraints(model1, begin
             #Collocation for Quadrature/ Objective Function
             #t = 0
-            Constr_quad_dot0[nfe = 1    , ncp in 1:NCP], dq[1, nfe, ncp]  == (x1[nfe,ncp] - y_sp[nfe])^2 + 0.5*(D[nfe]  - u₋₁[1]    )^2
+            Constr_quad_dot0[nfe in 1:1 , ncp in 1:NCP], dq[1, nfe, ncp]  == (x1[nfe,ncp] - y_sp[nfe])^2 + 0.5*(D[nfe]  - u₋₁[1]    )^2
             #t = 1..N
             Constr_quad_dot[nfe in 2:NFE, ncp in 1:NCP], dq[1, nfe, ncp]  == (x1[nfe,ncp] - y_sp[nfe])^2 + 0.5*(D[nfe] - D[nfe-1])^2
             #In case of objective depends on end state only -> dq = dx[2] etc
@@ -190,21 +194,33 @@ model1 = Model(with_optimizer(Ipopt.Optimizer))
 
             #region-> #generic code -> Collocation Equation for Differential Equations AND Objective Function
                   ## Creating a Radau collocation Matrix for NCP = 3
-                  collMat = Collocation_Matrix()
+                  # collMat = Collocation_Matrix()
+                  Pdotₘₐₜ, Pₘₐₜ = collocation_matrix(3, "Radau")
                   @NLconstraints(model1, begin
-                        #Collocation Equation 
+                        #Old Collocation Equation 
                         #t = 0
-                        Constr_Coll_Diff0[nx in 1:Nx,  nfe = 1, ncp in 1:NCP],        x[nx, nfe, ncp]    == (x0[nx] -ls_x[nx])/(us_x[nx] - ls_x[nx])              + dt * sum(collMat[ncp, i] * dx_us[nx, nfe, i] for i = 1:NCP)/(us_x[nx] - ls_x[nx])
-                        Constr_Coll_quad0[             nfe = 1, ncp in 1:NCP],        q[1, nfe, ncp]     == q0                                                    + dt * sum(collMat[ncp, i] * dq[1, nfe, i]  for i = 1:NCP)
+                        # Constr_Coll_Diff0[nx in 1:Nx,  nfe = 1, ncp in 1:NCP],        x[nx, nfe, ncp]    == (x0[nx] -ls_x[nx])/(us_x[nx] - ls_x[nx])              + dt * sum(collMat[ncp, i] * dx_us[nx, nfe, i] for i = 1:NCP)/(us_x[nx] - ls_x[nx])
+                        # Constr_Coll_quad0[             nfe = 1, ncp in 1:NCP],        q[1, nfe, ncp]     == q0                                                    + dt * sum(collMat[ncp, i] * dq[1, nfe, i]  for i = 1:NCP)
                         #t = 1 ... (N-1)
-                        Constr_Coll_Diff[nx in 1:Nx,   nfe in 2:NFE, ncp = 1:NCP],    x[nx, nfe, ncp]     == x[nx, nfe-1, NCP]                                    + dt * sum(collMat[ncp, i] * dx_us[nx, nfe, i] for i = 1:NCP)/(us_x[nx] - ls_x[nx])
-                        Constr_Coll_quad[              nfe in 2:NFE, ncp = 1:NCP],    q[1, nfe, ncp]      == q[1, nfe-1, NCP]                                     + dt * sum(collMat[ncp, i] * dq[1, nfe, i]  for i = 1:NCP)
+                        # Constr_Coll_Diff[nx in 1:Nx,   nfe in 2:NFE, ncp = 1:NCP],    x[nx, nfe, ncp]     == x[nx, nfe-1, NCP]                                    + dt * sum(collMat[ncp, i] * dx_us[nx, nfe, i] for i = 1:NCP)/(us_x[nx] - ls_x[nx])
+                        # Constr_Coll_quad[              nfe in 2:NFE, ncp = 1:NCP],    q[1, nfe, ncp]      == q[1, nfe-1, NCP]                                     + dt * sum(collMat[ncp, i] * dq[1, nfe, i]  for i = 1:NCP)
+                  
+                        #New Collocation Equations
+                        #Collocation Continuity
+                        Constr_Coll_Cont_Diff[nx in 1:Nx, nfe in 1:NFE-1, ncp in 1:1], sum(Pₘₐₜ[ncp]*x[nx, nfe, ncp] for ncp in 1:NCP) == x[nx, nfe+1, 1]
+                        Constr_Coll_Cont_quad[            nfe in 1:NFE-1, ncp in 1:1], sum(Pₘₐₜ[ncp]*q[1,  nfe, ncp] for ncp in 1:NCP) == q[1,  nfe+1, 1]
+
+                        #Collocation Integration
+                        Constr_Coll_Int_Diff[nx in 1:Nx, nfe in 1:NFE, ncp in 2:NCP], sum(Pdotₘₐₜ[ncp-1, i]*x[nx, nfe, i] for i in 1:NCP)    == (dt/(us_x[nx] - ls_x[nx]))*dx_us[nx, nfe, ncp]
+                        Constr_Coll_Int_quad[            nfe in 1:NFE, ncp in 2:NCP], sum(Pdotₘₐₜ[ncp-1, i]*q[1, nfe, i]  for i in 1:NCP)    == dt*dq[1, nfe, ncp]
+                  
+                  
                   end)
             #endregion
       #endregion
 
 ##*Solve the model
-if Solve_OCP == true
+# if Solve_OCP == true
 
       optimize!(model1)
       JuMP.termination_status(model1)
@@ -223,10 +239,10 @@ if Solve_OCP == true
                   star_x2 = cat(x0[2], star_x2, dims = 1)     
             star_D = JuMP.value.(D)
 
-end
+# end
 
       #region-> #*Plotting Solution
-      if Display_Plots == true
+      # if Display_Plots == true
 
             t_plot = collect(T0:dt:Tf)    #Returns NFE+1 dimensional vector
             #
@@ -240,7 +256,7 @@ end
             
             fig1 = plot(p11, p12, layout = (2, 1))
             fig1
-      end
+      # end
       #endregion
 
 star_MPC = (star_u[:,1] .* (us_u - ls_u)) .+ ls_u
