@@ -168,8 +168,8 @@ function Solve_OCP(x0, u₋₁, y_sp)
                         Pdotₘₐₜ, Pₘₐₜ = collocation_matrix(3, "Radau")
                         @NLconstraints(model1, begin
                               #Collocation Continuity
-                              Constr_Coll_Cont_Diff[nx in 1:Nx, nfe in 1:NFE-1, ncp in 1:1], sum(Pₘₐₜ[ncp]*x[nx, nfe, ncp] for ncp in 1:NCP) == x[nx, nfe+1, 1]
-                              Constr_Coll_Cont_quad[            nfe in 1:NFE-1, ncp in 1:1], sum(Pₘₐₜ[ncp]*q[1,  nfe, ncp] for ncp in 1:NCP) == q[1,  nfe+1, 1]
+                              Constr_Coll_Cont_Diff[nx in 1:Nx, nfe in 1:NFE-1, ncp in 1:1], sum(Pₘₐₜ[i]*x[nx, nfe, i] for i in 1:NCP) == x[nx, nfe+1, ncp]
+                              Constr_Coll_Cont_quad[            nfe in 1:NFE-1, ncp in 1:1], sum(Pₘₐₜ[i]*q[1,  nfe, i] for i in 1:NCP) == q[1,  nfe+1, ncp]
 
                               #Collocation Integration
                               Constr_Coll_Int_Diff[nx in 1:Nx, nfe in 1:NFE, ncp in 2:NCP], sum(Pdotₘₐₜ[ncp-1, i]*x[nx, nfe, i] for i in 1:NCP)    == (dt/(us_x[nx] - ls_x[nx]))*dx_us[nx, nfe, ncp]
